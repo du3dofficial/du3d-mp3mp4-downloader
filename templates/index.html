@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#570000"><title>DU3D Media Downloader</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;color:#fff;font-family:Georgia,serif;background:#570000 url('/static/assets/dragon_background.png') center/cover fixed no-repeat}
+    body.tiktok{background-color:#51005c;background-image:url('/static/assets/tiktok_background.png')}
+    .shade{min-height:100vh;background:linear-gradient(180deg,#50000055,#16000099);display:flex;justify-content:center;padding:22px 16px}
+    body.tiktok .shade{background:linear-gradient(180deg,#24002e55,#10001899)}
+    main{width:min(100%,560px);display:flex;flex-direction:column;align-items:center;text-align:center;padding:22px 8px 36px}
+    .brand{width:124px;height:124px;object-fit:contain;cursor:pointer;filter:drop-shadow(0 3px 12px #0008)}h1{font-size:clamp(26px,7vw,40px);margin:16px 0 8px}.sub{opacity:.86;margin:0 0 24px}
+    .group{width:100%;margin:8px 0 16px}.label{display:block;font-size:20px;margin-bottom:10px}.choices{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+    .choice{border:1px solid #ffffff65;background:#120e12c9;color:white;border-radius:999px;padding:11px 18px;font:600 16px Arial;cursor:pointer}.choice.active{background:#920d15;border-color:#ffb6b6;box-shadow:0 0 15px #fa243766}
+    body.tiktok .choice.active{background:#8b007d;box-shadow:0 0 15px #e000b766}
+    .linkrow{width:100%;display:flex;background:#fff;border-radius:15px;overflow:hidden;margin:12px 0 4px;border:1px solid #191919}.linkrow input{min-width:0;flex:1;border:0;padding:17px 16px;font-size:17px;outline:none}.linkrow button{width:54px;border:0;background:#eee;font-size:23px;cursor:pointer}
+    #download{margin:24px 0 12px;padding:14px 38px;border:0;border-bottom:3px solid white;background:#760008;color:#fff;font:bold 23px Georgia;cursor:pointer}
+    body.tiktok #download{background:#790071}#download:disabled{opacity:.55;cursor:wait}
+    #status{min-height:26px;font:15px Arial;color:#fff}.note{font:13px/1.5 Arial;opacity:.8;margin-top:auto;padding-top:24px}
+  </style>
+</head>
+<body><div class="shade"><main>
+  <img class="brand" src="/static/assets/app_logo.png" alt="DU3D logo" title="Open DU3D YouTube channel" onclick="window.open('https://www.youtube.com/@newjer53','_blank','noopener')">
+  <h1>Choose</h1><p class="sub">Download media you have permission to save.</p>
+  <section class="group"><span class="label">Platform</span><div class="choices"><button class="choice active" data-group="platform" data-value="youtube">◉ YouTube</button><button class="choice" data-group="platform" data-value="tiktok">○ TikTok</button></div></section>
+  <section class="group"><span class="label">Format</span><div class="choices"><button class="choice active" data-group="format" data-value="mp3">◉ MP3</button><button class="choice" data-group="format" data-value="mp4">○ MP4</button></div></section>
+  <div class="linkrow"><input id="url" type="url" placeholder="Enter Link" autocomplete="url"><button id="paste" aria-label="Paste link">🔗</button></div>
+  <button id="download">DOWNLOAD</button><div id="status" role="status"></div>
+  <p class="note">Playlist links are detected automatically. Playlist files download together as a ZIP. The hosted server limits playlists to 20 items and videos to 500 MB.</p>
+</main></div>
+<script>
+let platform='youtube',format='mp3';
+document.querySelectorAll('.choice').forEach(button=>button.addEventListener('click',()=>{
+  const group=button.dataset.group;document.querySelectorAll(`[data-group="${group}"]`).forEach(b=>{b.classList.remove('active');b.textContent=b.textContent.replace('◉','○')});
+  button.classList.add('active');button.textContent=button.textContent.replace('○','◉');
+  if(group==='platform'){platform=button.dataset.value;document.body.classList.toggle('tiktok',platform==='tiktok')}
+  else format=button.dataset.value;
+}));
+document.getElementById('paste').onclick=async()=>{try{document.getElementById('url').value=await navigator.clipboard.readText()}catch{document.getElementById('status').textContent='Clipboard access is unavailable in this browser.'}};
+document.getElementById('download').onclick=async()=>{
+  const input=document.getElementById('url'),button=document.getElementById('download'),status=document.getElementById('status'),url=input.value.trim();
+  if(!url){status.textContent='Paste or enter a video or playlist link.';input.focus();return}
+  button.disabled=true;status.textContent='Preparing your download…';
+  try{const response=await fetch('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,format,platform})});
+    if(!response.ok){const data=await response.json();throw new Error(data.error||'Download failed.')}
+    const blob=await response.blob(),disposition=response.headers.get('Content-Disposition')||'',match=disposition.match(/filename="?([^";]+)"?/i),name=match?match[1]:(format==='mp3'?'download.mp3':'download.mp4');
+    const anchor=document.createElement('a');anchor.href=URL.createObjectURL(blob);anchor.download=name;anchor.click();URL.revokeObjectURL(anchor.href);status.textContent='Download complete.';
+  }catch(error){status.textContent=error.message}finally{button.disabled=false}
+};
+</script></body></html>
